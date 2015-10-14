@@ -3,7 +3,7 @@
 # Copyright (c) 2004-2009 The Trustees of Indiana University and Indiana
 #                         University Research and Technology
 #                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2014 The University of Tennessee and The University
+# Copyright (c) 2004-2010 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
 # Copyright (c) 2004-2007 High Performance Computing Center Stuttgart,
@@ -19,9 +19,7 @@
 # Copyright (c) 2012      Oracle and/or its affiliates.  All rights reserved.
 # Copyright (c) 2013      Mellanox Technologies, Inc.
 #                         All rights reserved.
-# Copyright (c) 2013-2014 Intel, Inc.  All rights reserved.
-# Copyright (c) 2014-2015 Research Organization for Information Science
-#                         and Technology (RIST). All rights reserved.
+# Copyright (c) 2013-2015 Intel, Inc.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -36,7 +34,8 @@
 
 # Load in everything found by autogen.pl
 m4_include([config/autogen_found_items.m4])
-# Load the version number code
+# Load the version code.  Because this is also used directly as a
+# shell script, no ac_defun
 m4_include([config/opal_get_version.m4])
 AC_LANG([C])
 
@@ -44,12 +43,12 @@ AC_LANG([C])
 
 # We don't have the version number to put in here yet, and we can't
 # call OPAL_GET_VERSION (etc.) before AC_INIT.  So use the shell
-# version.  project_name_* comes from config/project_list.m4, which
-# was set during autogen.pl.
+# version.  project_name_* comes from config/autogen_found_items.m4, which
+# was set during autogen.sh.
 
 AC_INIT([project_name_long],
         [m4_normalize(esyscmd([config/opal_get_version.sh VERSION --tarball]))],
-        [http://www.open-mpi.org/community/help/], [project_name_short])
+        [https://github.com/open-mpi/orcm/issues], [project_name_short])
 AC_PREREQ(2.60)
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR(config)
@@ -57,6 +56,7 @@ AC_CONFIG_MACRO_DIR(config)
 # Get our platform support file.  This has to be done very, very early
 # because it twiddles random bits of autoconf
 OPAL_LOAD_PLATFORM
+ORCM_LOAD_CONFIGURATION
 
 #
 # Start it up
@@ -72,7 +72,7 @@ opal_show_title "Configuring project_name_long"
 opal_show_subtitle "Startup tests"
 AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
-AC_DEFINE_UNQUOTED(OPAL_ARCH, "$target", [OMPI architecture string])
+AC_DEFINE_UNQUOTED(OPAL_ARCH, "$target", [OPAL architecture string])
 AS_IF([test "$host" != "$target"],
       [AC_MSG_WARN([Cross-compile detected])
        AC_MSG_WARN([Cross-compiling is only partially supported])
@@ -103,54 +103,27 @@ AC_SUBST([CONFIGURE_DEPENDENCIES], ['$(top_srcdir)/VERSION'])
 
 opal_show_subtitle "Checking versions"
 
-# Get the version of OMPI that we are installing
+# Get the version of SCON that we are installing
 
-m4_ifdef([project_ompi],
-         [OPAL_SAVE_VERSION([OMPI], [Open MPI], [$srcdir/VERSION],
-                            [ompi/include/ompi/version.h])])
+OPAL_SAVE_VERSION([SCON], [Scalable Overlay Network],
+                  [$srcdir/VERSION],
+                  [scon/version.h])
 
-m4_ifdef([project_orte],
-         [OPAL_SAVE_VERSION([ORTE], [Open MPI Run-Time Environment],
-                            [$srcdir/VERSION],
-                            [orte/include/orte/version.h])])
-
-m4_ifdef([project_oshmem],
-         [OPAL_SAVE_VERSION([OSHMEM], [Open SHMEM],
-                            [$srcdir/VERSION],
-                            [oshmem/include/oshmem/version.h])])
-
-OPAL_SAVE_VERSION([OPAL], [Open Portable Access Layer], [$srcdir/VERSION],
-                  [opal/include/opal/version.h])
+AC_SUBST(SCON_VERSION)
+AC_SUBST(SCON_MAJOR_VERSION)
+AC_SUBST(SCON_MINOR_VERSION)
+AC_SUBST(SCON_RELEASE_VERSION)
+AC_SUBST(SCON_GREEK_VERSION)
+AC_SUBST(SCON_REPO_REV)
+AC_SUBST(SCON_TARBALL_VERSION)
+AC_SUBST(SCON_RELEASE_DATE)
 
 # Get shared library version numbers
 
 . $srcdir/VERSION
-m4_ifdef([project_ompi],
-         [AC_SUBST(libmpi_so_version)
-          AC_SUBST(libmpi_cxx_so_version)
-          AC_SUBST(libmpi_mpifh_so_version)
-          AC_SUBST(libmpi_usempi_tkr_so_version)
-          AC_SUBST(libmpi_usempi_ignore_tkr_so_version)
-          AC_SUBST(libmpi_usempif08_so_version)
-          AC_SUBST(libmpi_java_so_version)])
-m4_ifdef([project_orte],
-         [AC_SUBST(libopen_rte_so_version)])
-m4_ifdef([project_oshmem],
-         [AC_SUBST(liboshmem_so_version)
-          AC_SUBST(liboshmem_java_so_version)])
-AC_SUBST(libopen_pal_so_version)
-# It's icky that we have to hard-code the names of the
-# common components here.  :-( This could probably be done
-# transparently by adding some intelligence in autogen.pl
-# and/or opal_mca.m4, but I don't have the cycles to do this
-# right now.
-AC_SUBST(libmca_opal_common_libfabric_so_version)
-AC_SUBST(libmca_common_cuda_so_version)
-AC_SUBST(libmca_common_ofacm_so_version)
-AC_SUBST(libmca_common_sm_so_version)
-AC_SUBST(libmca_common_ugni_so_version)
-AC_SUBST(libmca_common_verbs_so_version)
-AC_SUBST(libmca_common_alps_so_version)
+
+# SCON level
+AC_SUBST(libscon_so_version)
 
 #
 # Get the versions of the autotools that were used to bootstrap us
@@ -165,117 +138,39 @@ AC_MSG_CHECKING([for boostrap Libtool version])
 ltversion=`grep VERSION= $srcdir/config/ltmain.sh | head -n 1 | cut -d= -f2`
 AC_MSG_RESULT([$ltversion])
 
-# List header files to generate
-
-AC_CONFIG_HEADERS([opal/include/opal_config.h])
-m4_ifdef([project_ompi],
-         [AC_CONFIG_HEADERS([ompi/include/mpi.h])])
-m4_ifdef([project_oshmem],
-         [AC_CONFIG_HEADER([oshmem/include/shmem.h])])
-
 opal_show_subtitle "Initialization, setup"
 
-OMPI_TOP_BUILDDIR="`pwd`"
-AC_SUBST(OMPI_TOP_BUILDDIR)
+SCON_TOP_BUILDDIR="`pwd`"
+AC_SUBST(SCON_TOP_BUILDDIR)
 cd "$srcdir"
-OMPI_TOP_SRCDIR="`pwd`"
-AC_SUBST(OMPI_TOP_SRCDIR)
-cd "$OMPI_TOP_BUILDDIR"
+SCON_TOP_SRCDIR="`pwd`"
+AC_SUBST(SCON_TOP_SRCDIR)
+cd "$SCON_TOP_BUILDDIR"
 
-AC_MSG_NOTICE([builddir: $OMPI_TOP_BUILDDIR])
-AC_MSG_NOTICE([srcdir: $OMPI_TOP_SRCDIR])
-if test "$OMPI_TOP_BUILDDIR" != "$OMPI_TOP_SRCDIR"; then
+AC_MSG_NOTICE([builddir: $SCON_TOP_BUILDDIR])
+AC_MSG_NOTICE([srcdir: $SCON_TOP_SRCDIR])
+if test "$SCON_TOP_BUILDDIR" != "$SCON_TOP_SRCDIR"; then
     AC_MSG_NOTICE([Detected VPATH build])
 fi
 
-# Setup the top of the opal/include/opal_config.h file
-
-AH_TOP([/* -*- c -*-
- *
- * Copyright (c) 2004-2005 The Trustees of Indiana University.
- *                         All rights reserved.
- * Copyright (c) 2004-2005 The Trustees of the University of Tennessee.
- *                         All rights reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
- *                         University of Stuttgart.  All rights reserved.
- * Copyright (c) 2004-2005 The Regents of the University of California.
- *                         All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
- * $COPYRIGHT$
- *
- * Additional copyrights may follow
- *
- * $HEADER$
- *
- * Function: - OS, CPU and compiler dependent configuration
- */
-
-#ifndef OPAL_CONFIG_H
-#define OPAL_CONFIG_H
-
-#include "opal_config_top.h"
-
-])
-AH_BOTTOM([
-#include "opal_config_bottom.h"
-#endif /* OPAL_CONFIG_H */
-])
-
-# Other basic setup stuff (shared with components)
-
-OPAL_BASIC_SETUP
-
-OPAL_TOP_SRCDIR="$OMPI_TOP_SRCDIR"
-OPAL_TOP_BUILDDIR="$OMPI_TOP_BUILDDIR"
-AC_SUBST(OPAL_TOP_SRCDIR)
-AC_SUBST(OPAL_TOP_BUILDDIR)
-
-m4_ifdef([project_orte],
-         [ORTE_TOP_SRCDIR="$OMPI_TOP_SRCDIR"
-          ORTE_TOP_BUILDDIR="$OMPI_TOP_BUILDDIR"
-          AC_SUBST(ORTE_TOP_SRCDIR)
-          AC_SUBST(ORTE_TOP_BUILDDIR)])
-
-m4_ifdef([project_oshmem],
-         [OSHMEM_TOP_SRCDIR="$OMPI_TOP_SRCDIR"
-          OSHMEM_TOP_BUILDDIR="$OMPI_TOP_BUILDDIR"
-          AC_SUBST(OSHMEM_TOP_SRCDIR)
-          AC_SUBST(OSHMEM_TOP_BUILDDIR)])
 
 ############################################################################
 # Configuration options
 ############################################################################
 
-OPAL_CONFIGURE_OPTIONS
-OPAL_CHECK_OS_FLAVORS
-OPAL_CHECK_CUDA
-m4_ifdef([project_orte], [ORTE_CONFIGURE_OPTIONS])
-m4_ifdef([project_ompi], [OMPI_CONFIGURE_OPTIONS])
-m4_ifdef([project_oshmem], [OSHMEM_CONFIGURE_OPTIONS])
+SCON_CONFIGURE_OPTIONS
 
-# Set up project specific AM_CONDITIONALs
-AS_IF([test "$enable_ompi" != "no"], [project_ompi_amc=true], [project_ompi_amc=false])
-m4_ifndef([project_ompi], [project_ompi_amc=false])
-AM_CONDITIONAL([PROJECT_OMPI], [test "$project_ompi_amc" = "true"])
-
-AS_IF([test "$enable_orte" != "no"], [project_orte_amc=true], [project_orte_amc=false])
-m4_ifndef([project_orte], [project_orte_amc=false])
-AM_CONDITIONAL([PROJECT_ORTE], [test "$project_orte_amc" = "true"])
-
-AS_IF([test "$enable_oshmem" != "no"], [project_oshmem_amc=true], [project_oshmem_amc=false])
-m4_ifndef([project_oshmem], [project_oshmem_amc=false])
-AM_CONDITIONAL([PROJECT_OSHMEM], [test "$project_oshmem_amc" = "true"])
-
-if test "$enable_binaries" = "no" && test "$enable_dist" = "yes"; then
+if test "$enable_binaries" = "no" -a "$enable_dist" = "yes"; then
     AC_MSG_WARN([--disable-binaries is incompatible with --enable dist])
     AC_MSG_ERROR([Cannot continue])
 fi
 
 # The library prefixes must be set before we call OPAL MCA.  Here is
 # as good a place as any.
-OPAL_SET_LIB_PREFIX([])
-m4_ifdef([project_orte],
-          [ORTE_SET_LIB_PREFIX([])])
+OPAL_SET_LIB_PREFIX([scon])
+ORTE_SET_LIB_PREFIX([scon])
+OPAL_SET_MCA_PREFIX([SCON_MCA_])
+OPAL_SET_MCA_CMD_LINE_ID([smca])
 
 ############################################################################
 # Libtool: part one
@@ -283,9 +178,16 @@ m4_ifdef([project_orte],
 ############################################################################
 
 #
-# Part one of libtool magic.  Default to: enable shared, disable static.
+# Part one of libtool magic.  Enable static so that we have the --with
+# tests done up here and can check for OS.  Save the values of
+# $enable_static and $enable_shared before setting the defaults,
+# because if the user specified --[en|dis]able-[static|shared] on the
+# command line, they'll already be set.  In this way, we can tell if
+# the user requested something or if the default was set here.
 #
 
+opal_enable_shared="$enable_shared"
+opal_enable_static="$enable_static"
 AM_ENABLE_SHARED
 AM_DISABLE_STATIC
 
@@ -326,14 +228,6 @@ opal_show_title "Compiler and preprocessor tests"
 ##################################
 
 OPAL_SETUP_CC
-
-# If we build on a windows environment with the windows compiler and linker
-# then we need some translation functions from the opal/win32 directory.
-AM_CONDITIONAL(OMPI_NEED_WINDOWS_REPLACEMENTS,
-               test "$opal_cv_c_compiler_vendor" = "microsoft" )
-
-# Do all Interix detections if necessary
-OMPI_INTERIX
 
 # Does the compiler support "ident"-like constructs?
 
@@ -465,8 +359,43 @@ OPAL_C_GET_ALIGNMENT(size_t, OPAL_ALIGNMENT_SIZE_T)
 # Check for other compiler characteristics
 #
 
+OPAL_VAR_SCOPE_PUSH([CFLAGS_save])
+if test "$GCC" = "yes"; then
+
+    # gcc 2.96 will emit oodles of warnings if you use "inline" with
+    # -pedantic (which we do in developer builds).  However,
+    # "__inline__" is ok.  So we have to force gcc to select the
+    # right one.  If you use -pedantic, the AC_C_INLINE test will fail
+    # (because it names a function foo() -- without the (void)).  So
+    # we turn off all the picky flags, turn on -ansi mode (which is
+    # implied by -pedantic), and set warnings to be errors.  Hence,
+    # this does the following (for 2.96):
+    #
+    # - causes the check for "inline" to emit a warning, which then
+    # fails
+    # - checks for __inline__, which then emits no error, and works
+    #
+    # This also works nicely for gcc 3.x because "inline" will work on
+    # the first check, and all is fine.  :-)
+
+    CFLAGS_save=$CFLAGS
+    CFLAGS="$OPAL_CFLAGS_BEFORE_PICKY -Werror -ansi"
+fi
+AC_C_INLINE
+# Microsoft compilers support 2 versions of restrict. One for functions, and
+# one for variables. The problem is that they don't have an equivalent
+# syntax, and the autoconf restrict detection is unable to detect them
+# correctly. It detect the restrict keyword as __restrict which break the
+# rules for function syntax which is declspec(restrict).
+if test "x$opal_cv_c_compiler_vendor" != "xmicrosoft"; then
+    AC_C_RESTRICT
+fi
 OPAL_C_WEAK_SYMBOLS
 OPAL_C_MACRO_WEAK_SYMBOLS
+if test "$GCC" = "yes"; then
+    CFLAGS=$CFLAGS_save
+fi
+OPAL_VAR_SCOPE_POP
 
 if test "x$CC" = "xicc"; then
     OPAL_CHECK_ICC_VARARGS
@@ -480,15 +409,6 @@ fi
 if test "$WANT_WEAK_SYMBOLS" = "0"; then
     OPAL_C_HAVE_WEAK_SYMBOLS=0
 fi
-if test "$WANT_MPI_PROFILING" = "1"; then
-    if test "$OPAL_C_HAVE_WEAK_SYMBOLS" = "1"; then
-        OMPI_PROFILING_COMPILE_SEPARATELY=0
-    else
-        OMPI_PROFILING_COMPILE_SEPARATELY=1
-    fi
-else
-    OMPI_PROFILING_COMPILE_SEPARATELY=0
-fi
 
 # Check if we support the offsetof compiler directive
 
@@ -496,51 +416,13 @@ OPAL_CHECK_OFFSETOF
 
 
 ##################################
-# C++ compiler characteristics
-##################################
-
-# We don't need C++ unless we're building Open MPI; ORTE and OPAL do
-# not use C++ at all.  The OPAL macro name appears to be a bit of a
-# misnomer; I'm not sure why it was split into a second macro and put
-# into OPAL...?  All it does is setup the C++ compiler (the OMPI macro
-# sets up the C++ MPI bindings, etc.).  Perhaps it was moved to OPAL
-# just on the rationale that all compiler setup should be done in
-# OPAL...?  Shrug.
-m4_ifdef([project_ompi], [OPAL_SETUP_CXX
-                          OMPI_SETUP_CXX])
-
-##################################
-# Only after setting up both
-# C and C++ check compiler attributes.
+# Only after setting up C - check compiler attributes.
 ##################################
 
 opal_show_subtitle "Compiler characteristics"
 
 OPAL_CHECK_ATTRIBUTES
 OPAL_CHECK_COMPILER_VERSION_ID
-
-
-##################################
-# Java MPI Binding request
-##################################
-# Only needed for OMPI
-m4_ifdef([project_ompi], [OMPI_SETUP_JAVA_BINDINGS])
-m4_ifdef([project_oshmem], [OSHMEM_SETUP_JAVA_BINDINGS])
-
-
-##################################
-# MPI / OpenSHMEM API profiling layer
-##################################
-
-# Setup profiling bindings (if we're building the relevant projects).
-# Note that opal_wrapper.c has a hard-coded use of the
-# OMPI_ENABLE_MPI_PROFILING macro, so we need to define it (to 0) even
-# if we're not building the OMPI project.
-
-m4_ifdef([project_ompi], [OMPI_SETUP_MPI_PROFILING],
-                         [AC_DEFINE([OMPI_ENABLE_MPI_PROFILING], [0],
-                                    [We are not building OMPI, so no profiling])])
-m4_ifdef([project_oshmem], [OSHMEM_SETUP_PROFILING])
 
 
 ##################################
@@ -554,39 +436,24 @@ OPAL_CONFIG_ASM
 
 
 ##################################
-# Fortran
-##################################
-
-m4_ifdef([project_ompi], [OMPI_SETUP_MPI_FORTRAN], [ompi_fortran_happy=0])
-
-AM_CONDITIONAL(OSHMEM_BUILD_FORTRAN_BINDINGS,
-    [test "$enable_oshmem" = "yes" && \
-     test "$ompi_fortran_happy" = "1" && \
-     test "$OMPI_TRY_FORTRAN_BINDINGS" -gt "$OMPI_FORTRAN_NO_BINDINGS" && \
-     test "$enable_oshmem_fortran" != "no"])
-
-# checkpoint results
-AC_CACHE_SAVE
-
-
-##################################
 # Header files
 ##################################
 
 opal_show_title "Header file tests"
 
 AC_CHECK_HEADERS([alloca.h aio.h arpa/inet.h dirent.h \
-    dlfcn.h execinfo.h err.h fcntl.h grp.h libgen.h \
+    dlfcn.h execinfo.h err.h fcntl.h grp.h inttypes.h libgen.h \
     libutil.h memory.h netdb.h netinet/in.h netinet/tcp.h \
-    poll.h pthread.h pty.h pwd.h sched.h \
-    strings.h stropts.h sys/fcntl.h sys/ipc.h sys/shm.h \
+    poll.h pthread.h pty.h pwd.h sched.h stdint.h stddef.h \
+    stdlib.h string.h strings.h stropts.h sys/fcntl.h sys/ipc.h sys/shm.h \
     sys/ioctl.h sys/mman.h sys/param.h sys/queue.h \
     sys/resource.h sys/select.h sys/socket.h sys/sockio.h \
-    sys/stat.h sys/statfs.h sys/statvfs.h sys/time.h sys/tree.h \
-    sys/types.h sys/uio.h sys/un.h net/uio.h sys/utsname.h sys/vfs.h sys/wait.h syslog.h \
-    termios.h ulimit.h unistd.h util.h utmp.h malloc.h \
-    ifaddrs.h crt_externs.h regex.h mntent.h paths.h \
-    ioLib.h sockLib.h hostLib.h shlwapi.h sys/synch.h db.h ndbm.h])
+    stdarg.h sys/stat.h sys/statfs.h sys/statvfs.h sys/time.h sys/tree.h \
+    sys/types.h sys/uio.h sys/un.h net/uio.h sys/utsname.h sys/vfs.h sys/wait.h \
+    sys/sysinfo.h syslog.h \
+    time.h termios.h ulimit.h unistd.h util.h utmp.h malloc.h \
+    ifaddrs.h crt_externs.h regex.h signal.h \
+    ioLib.h sockLib.h hostLib.h shlwapi.h sys/synch.h limits.h db.h ndbm.h])
 
 AC_CHECK_HEADERS([sys/mount.h], [], [],
 [AC_INCLUDES_DEFAULT
@@ -622,6 +489,34 @@ AC_CHECK_HEADERS([net/if.h], [], [],
 # checkpoint results
 AC_CACHE_SAVE
 
+
+##################################
+# Linker characteristics
+##################################
+
+AC_MSG_CHECKING([the linker for support for the -fini option])
+OPAL_VAR_SCOPE_PUSH([LDFLAGS_save])
+LDFLAGS_save=$LDFLAGS
+LDFLAGS="$LDFLAGS_save -Wl,-fini -Wl,finalize"
+AC_TRY_LINK([void finalize (void) {}], [], [AC_MSG_RESULT([yes])
+        opal_ld_have_fini=1], [AC_MSG_RESULT([no])
+        opal_ld_have_fini=0])
+LDFLAGS=$LDFLAGS_save
+OPAL_VAR_SCOPE_POP
+
+opal_destructor_use_fini=0
+opal_no_destructor=0
+if test x$opal_cv___attribute__destructor = x0 ; then
+    if test x$opal_ld_have_fini = x1 ; then
+        opal_destructor_use_fini=1
+    else
+        opal_no_destructor=1;
+    fi
+fi
+
+AC_DEFINE_UNQUOTED(OPAL_NO_LIB_DESTRUCTOR, [$opal_no_destructor],
+    [Whether libraries can be configured with destructor functions])
+AM_CONDITIONAL(OPAL_DESTRUCTOR_USE_FINI, [test x$opal_destructor_use_fini = x1])
 
 ##################################
 # Types
@@ -731,7 +626,7 @@ if test $ac_cv_type_ptrdiff_t = yes ; then
 elif test $ac_cv_sizeof_void_p -eq $ac_cv_sizeof_long ; then
     opal_ptrdiff_t="long"
     opal_ptrdiff_size=$ac_cv_sizeof_long
-elif test $ac_cv_type_long_long = yes && test $ac_cv_sizeof_void_p -eq $ac_cv_sizeof_long_long ; then
+elif test $ac_cv_type_long_long = yes -a $ac_cv_sizeof_void_p -eq $ac_cv_sizeof_long_long ; then
     opal_ptrdiff_t="long long"
     opal_ptrdiff_size=$ac_cv_sizeof_long_long
 else
@@ -741,43 +636,9 @@ AC_DEFINE_UNQUOTED([OPAL_PTRDIFF_TYPE], [$opal_ptrdiff_t],
     [type to use for ptrdiff_t])
 AC_MSG_RESULT([$opal_ptrdiff_t (size: $opal_ptrdiff_size)])
 
-#
-# Find corresponding types for MPI_Aint, MPI_Count, and MPI_Offset.
-# And if relevant, find the corresponding MPI_ADDRESS_KIND,
-# MPI_COUNT_KIND, and MPI_OFFSET_KIND.
-#
-m4_ifdef([project_ompi], [OMPI_FIND_MPI_AINT_COUNT_OFFSET])
-
 # checkpoint results
 AC_CACHE_SAVE
 
-##################################
-# Linker characteristics
-##################################
-
-AC_MSG_CHECKING([the linker for support for the -fini option])
-OPAL_VAR_SCOPE_PUSH([LDFLAGS_save])
-LDFLAGS_save=$LDFLAGS
-LDFLAGS="$LDFLAGS_save -Wl,-fini -Wl,finalize"
-AC_TRY_LINK([void finalize (void) {}], [], [AC_MSG_RESULT([yes])
-        opal_ld_have_fini=1], [AC_MSG_RESULT([no])
-        opal_ld_have_fini=0])
-LDFLAGS=$LDFLAGS_save
-OPAL_VAR_SCOPE_POP
-
-opal_destructor_use_fini=0
-opal_no_destructor=0
-if test x$opal_cv___attribute__destructor = x0 ; then
-    if test x$opal_ld_have_fini = x1 ; then
-        opal_destructor_use_fini=1
-    else
-        opal_no_destructor=1;
-    fi
-fi
-
-AC_DEFINE_UNQUOTED(OPAL_NO_LIB_DESTRUCTOR, [$opal_no_destructor],
-    [Whether libraries can be configured with destructor functions])
-AM_CONDITIONAL(OPAL_DESTRUCTOR_USE_FINI, [test x$opal_destructor_use_fini = x1])
 
 ##################################
 # Libraries
@@ -795,7 +656,7 @@ OPAL_SEARCH_LIBS_CORE([socket], [socket])
 # Solaris has sched_yield in -lrt, usually in libc
 OPAL_SEARCH_LIBS_CORE([sched_yield], [rt])
 
-# IRIX and CentOS have dirname in -lgen, usually in libc
+# IRIX has dirname in -lgen, usually in libc
 OPAL_SEARCH_LIBS_CORE([dirname], [gen])
 
 # Darwin doesn't need -lm, as it's a symlink to libSystem.dylib
@@ -807,7 +668,7 @@ OPAL_SEARCH_LIBS_CORE([clock_gettime], [rt])
 AC_CHECK_FUNCS([asprintf snprintf vasprintf vsnprintf openpty isatty getpwuid fork waitpid execve pipe ptsname setsid mmap tcgetpgrp posix_memalign strsignal sysconf syslog vsyslog regcmp regexec regfree _NSGetEnviron socketpair strncpy_s usleep mkfifo dbopen dbm_open statfs statvfs setpgid setenv])
 
 # Sanity check: ensure that we got at least one of statfs or statvfs.
-if test $ac_cv_func_statfs = no && test $ac_cv_func_statvfs = no; then
+if test $ac_cv_func_statfs = no -a $ac_cv_func_statvfs = no; then
     AC_MSG_WARN([neither statfs() and statvfs() were found])
     AC_MSG_ERROR([Cannot continue])
 fi
@@ -817,7 +678,7 @@ fi
 # the magic glibc foo as not implemented.  and on other systems, it's
 # just not there.  This covers all cases.
 AC_CACHE_CHECK([for htonl define],
-  [ompi_cv_htonl_define],
+  [opal_cv_htonl_define],
   [AC_PREPROC_IFELSE([AC_LANG_PROGRAM([
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -831,9 +692,9 @@ AC_CACHE_CHECK([for htonl define],
 #ifndef ntohl
 #error "ntohl not defined"
 #endif
-])], [ompi_cv_htonl_define=yes], [ompi_cv_htonl_define=no])])
-AC_CHECK_FUNC([htonl], [ompi_have_htonl=yes], [ompi_have_htonl=no])
-AS_IF([test "$ompi_cv_htonl_define" = "yes" || test "$ompi_have_htonl" = "yes"],
+])], [opal_cv_htonl_define=yes], [opal_cv_htonl_define=no])])
+AC_CHECK_FUNC([htonl], [opal_have_htonl=yes], [opal_have_htonl=no])
+AS_IF([test "$opal_cv_htonl_define" = "yes" -o "$opal_have_htonl" = "yes"],
     [AC_DEFINE_UNQUOTED([HAVE_UNIX_BYTESWAP], [1],
         [whether unix byteswap routines -- htonl, htons, nothl, ntohs -- are available])])
 
@@ -868,15 +729,15 @@ opal_show_title "System-specific tests"
 # sysconf(), but does not have _SC_NPROCESSORS_ONLN.  Doh!
 
 AC_CACHE_CHECK([for _SC_NPROCESSORS_ONLN],
-  [ompi_cv_have__SC_NPROCESSORS_ONLN],
+  [opal_cv_have__SC_NPROCESSORS_ONLN],
   [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
 AC_INCLUDES_DEFAULT
 #include <unistd.h>
 ],
      [int i = _SC_NPROCESSORS_ONLN;])],
-     [ompi_cv_have__SC_NPROCESSORS_ONLN="yes"],
-     [ompi_cv_have__SC_NPROCESSORS_ONLN="no"])])
-AS_IF([test "$ompi_cv_have__SC_NPROCESSORS_ONLN" = "yes"],
+     [opal_cv_have__SC_NPROCESSORS_ONLN="yes"],
+     [opal_cv_have__SC_NPROCESSORS_ONLN="no"])])
+AS_IF([test "$opal_cv_have__SC_NPROCESSORS_ONLN" = "yes"],
       [result=1], [result=0])
 AC_DEFINE_UNQUOTED([OPAL_HAVE__SC_NPROCESSORS_ONLN], [$result],
   [Define to 1 ifyou have the declaration of _SC_NPROCESSORS_ONLN, and to 0 otherwise])
@@ -886,6 +747,24 @@ AC_DEFINE_UNQUOTED([OPAL_HAVE__SC_NPROCESSORS_ONLN], [$result],
 AC_C_BIGENDIAN
 
 OPAL_CHECK_BROKEN_QSORT
+
+AC_CACHE_CHECK([if word-sized integers must be word-size aligned],
+    [opal_cv_c_word_size_align],
+    [AC_LANG_PUSH(C)
+     AC_RUN_IFELSE([AC_LANG_PROGRAM([dnl
+#include <stdlib.h>], [[    long data[2] = {0, 0};
+    long *lp;
+    int *ip;
+    ip = (int*) data;
+    ip++;
+    lp = (long*) ip;
+    return lp[0]; ]])],
+        [opal_cv_c_word_size_align=no],
+        [opal_cv_c_word_size_align=yes],
+        [opal_cv_c_word_size_align=yes])])
+AS_IF([test $opal_cv_c_word_size_align = yes], [results=1], [results=0])
+AC_DEFINE_UNQUOTED([OPAL_ALIGN_WORD_SIZE_INTEGERS], [$results],
+    [set to 1 if word-size integers must be aligned to word-size padding to prevent bus errors])
 
 # all: SYSV semaphores
 # all: SYSV shared memory
@@ -898,7 +777,6 @@ OPAL_CHECK_BROKEN_QSORT
 # Check out what thread support we have
 #
 OPAL_CONFIG_THREADS
-OMPI_CONFIG_THREADS
 
 CFLAGS="$CFLAGS $THREAD_CFLAGS"
 CPPFLAGS="$CPPFLAGS $THREAD_CPPFLAGS"
@@ -928,21 +806,28 @@ AC_PROG_EGREP
 AM_PROG_AS
 AM_PROG_LEX
 
-# If we don't have Flex and we don't have a generated .c file
-# (distribution tarballs will have the .c file included, but git
-# clones will not), then error.  Must have Flex -- other versions of
-# Lex are not workable (all things being equal, since this is *only*
-# required for developers, we decided that it really was not worth it
-# to be portable between different versions of lex ;-).
+# If we don't have GNU Flex and we don't have a generated .c file
+# (distribution tarballs will have the .c file included, but SVN
+# checkouts will not), then error.  Must have GNU Flex -- other
+# versions of Lex are not workable (all things being equal, since this
+# is *only* required for developers, we decided that it really was not
+# worth it to be portable between different versions of lex ;-).
 
-if test -z "$LEX" || \
-   test -n "`echo $LEX | $GREP missing`" || \
-   test "`basename $LEX`" != "flex"; then
+if test -z "$LEX" -o -n "`echo $LEX | $GREP missing`" -o \
+    "`basename $LEX`" != "flex"; then
     if test ! -f "$srcdir/opal/util/show_help_lex.c"; then
-        AC_MSG_WARN([*** Could not find Flex on your system.])
-        AC_MSG_WARN([*** Flex is required for developer builds of Open MPI.])
+        AC_MSG_WARN([*** Could not find GNU Flex on your system.])
+        AC_MSG_WARN([*** GNU Flex required for developer builds of Open MPI.])
         AC_MSG_WARN([*** Other versions of Lex are not supported.])
-        AC_MSG_WARN([*** YOU DO NOT NEED FLEX WHEN BUILDING DISTRIBUTION TARBALLS!])
+        AC_MSG_WARN([*** YOU DO NOT NEED FLEX FOR DISTRIBUTION TARBALLS!])
+        AC_MSG_WARN([*** If you absolutely cannot install GNU Flex on this system])
+        AC_MSG_WARN([*** consider using a distribution tarball, or generate the])
+        AC_MSG_WARN([*** following files on another system (using Flex) and])
+        AC_MSG_WARN([*** copy them here:])
+        for lfile in `find . -name \*.l -print`; do
+            cfile="`echo $lfile | cut -d. -f-2`"
+            AC_MSG_WARN([***     $cfile.c])
+        done
         AC_MSG_ERROR([Cannot continue])
     fi
 fi
@@ -950,7 +835,7 @@ fi
 #
 # Look for ps command and arguments for orte-clean
 #
-m4_ifdef([project_orte], [OPAL_PS_FLAVOR_CHECK])
+OPAL_PS_FLAVOR_CHECK
 
 #
 # File system case sensitivity
@@ -1034,95 +919,12 @@ AC_INCLUDES_DEFAULT
 # checkpoint results
 AC_CACHE_SAVE
 
-###########################################################
-#        Fault Tolerance
-#
-# The FT code in the OMPI trunk is currently broken. We don't
-# have an active maintainer for it at this time, and it isn't
-# clear if/when we will return to it. We have therefore removed
-# the configure options supporting it until such time as it
-# can be fixed.
-#
-# However, we recognize that there are researchers who use this
-# option on their independent branches. In such cases, simply
-# uncomment the line below to render the FT configure options
-# visible again
-#
-###########################################################
-OPAL_SETUP_FT_OPTIONS
-###########################################################
-# The following line is always required as it contains the
-# AC_DEFINE and AM_CONDITIONAL calls that set variables used
-# throughout the build system. If the above line is commented
-# out, then those variables will be set to "off". Otherwise,
-# they are controlled by the options
-OPAL_SETUP_FT
-
-##################################
-# MCA
-##################################
-
-opal_show_title "Modular Component Architecture (MCA) setup"
-
-AC_MSG_CHECKING([for subdir args])
-OPAL_CONFIG_SUBDIR_ARGS([opal_subdir_args])
-AC_MSG_RESULT([$opal_subdir_args])
-
-OPAL_MCA
-
-m4_ifdef([project_ompi], [OMPI_REQUIRE_ENDPOINT_TAG_FINI])
-
-# checkpoint results
-AC_CACHE_SAVE
-
-##################################
-# CUDA: part two
-##################################
-
-# This is somewhat gross to have a configure check for a common MCA
-# component outside of the normal MCA checks, but this check must come
-# after the opal DL MCA checks have done.  Someday this could perhaps
-# be done better by having some kind of "run this check at the end of
-# all other MCA checks" hook...?
-
-OPAL_CHECK_CUDA_AFTER_OPAL_DL
-
-##################################
-# MPI Extended Interfaces
-##################################
-
-m4_ifdef([project_ompi], [OMPI_SETUP_MPI_EXT])
-
-# checkpoint results
-AC_CACHE_SAVE
-
-##################################
-# Contributed software
-##################################
-
-m4_ifdef([project_ompi], [OMPI_SETUP_CONTRIB])
-
-# checkpoint results
-AC_CACHE_SAVE
-
-##################################
-# Visibility
-##################################
-
-# Check the visibility declspec at the end to avoid problem with
-# the previous tests that are not necessarily prepared for
-# the visibility feature.
-opal_show_title "Symbol visibility feature"
-
-OPAL_CHECK_VISIBILITY
-
-
 
 ############################################################################
-# Final top-level OMPI configuration
+# Final top-level SCON configuration
 ############################################################################
 
-opal_show_title "Final top-level OMPI configuration"
+opal_show_title "Final top-level SCON configuration"
 
 ############################################################################
 # Libtool: part two
@@ -1136,17 +938,6 @@ opal_show_subtitle "Libtool configuration"
 if test "x$opal_cv_c_compiler_vendor" = "xsun"; then
     solaris_use_stlport4="yes"
 fi
-
-# Due to this thread:
-# http://www.open-mpi.org/community/lists/users/2013/02/21356.php and
-# a helpful tip from Dave Goodell, set the precious variables for
-# compilers to "no" that we don't want.  Libtool's m4 configry will
-# interpret this as "I won't be using this language; don't bother
-# setting it up."  Note that we do this only for Fortran; we *don't*
-# do this for C++, because even if we're not building the MPI C++
-# bindings, we *do* still want to setup the mpicxx wrapper if we have
-# a C++ compiler.
-AS_IF([test "$OMPI_TRY_FORTRAN_BINDINGS" = "$OMPI_FORTRAN_NO_BINDINGS"],[F77=no FC=no])
 
 LT_INIT([dlopen win32-dll])
 
@@ -1191,8 +982,7 @@ LT_OUTPUT
 # final compiler config
 ############################################################################
 
-m4_ifdef([project_ompi], [opal_show_subtitle "Compiler flags"],
-         [m4_ifdef([project_orte], [opal_show_subtitle "Compiler flags"])])
+opal_show_subtitle "Compiler flags"]
 
 #
 # This is needed for VPATH builds, so that it will -I the appropriate
@@ -1206,25 +996,20 @@ m4_ifdef([project_ompi], [opal_show_subtitle "Compiler flags"],
 # will install it for us. If we VPATH building, we do need to include the
 # source directories, however.
 #
-if test "$OMPI_TOP_BUILDDIR" != "$OMPI_TOP_SRCDIR"; then
+if test "$OPAL_TOP_BUILDDIR" != "$OPAL_TOP_SRCDIR"; then
     # Note the embedded m4 directives here -- we must embed them
     # rather than have successive assignments to these shell
     # variables, lest the $(foo) names try to get evaluated here.
     # Yuck!
-    CPPFLAGS='-I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include m4_ifdef([project_orte], [-I$(top_srcdir)/orte/include -I$(top_builddir)/orte/include]) m4_ifdef([project_ompi], [-I$(top_srcdir)/ompi/include]) m4_ifdef([project_oshmem], [-I$(top_srcdir)/oshmem/include])'" $CPPFLAGS"
-    # C++ is only relevant if we're building OMPI
-    m4_ifdef([project_ompi], [CXXCPPFLAGS='-I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include -I$(top_srcdir)/orte/include -I$(top_srcdir)/ompi/include'" $CXXCPPFLAGS"])
+    CPPFLAGS='-I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include -I$(top_srcdir)/orte/include -I$(top_builddir)/orte/include -I$(top_srcdir)/orcm/include -I$(top_builddir)/orcm/include'" $CPPFLAGS"
 else
-    CPPFLAGS='-I$(top_srcdir) m4_ifdef([project_orte], [-I$(top_srcdir)/orte/include])'" $CPPFLAGS"
-    # C++ is only relevant if we're building OMPI
-    m4_ifdef([project_ompi], [CXXCPPFLAGS='-I$(top_srcdir)'" $CXXCPPFLAGS"])
+    CPPFLAGS='-I$(top_srcdir) -I$(top_srcdir)/orte/include -I$(top_srcdir)/orcm/include'" $CPPFLAGS"
 fi
 
 # OMPI/ORTE wants some additional processing of the flags (e.g., get
 # versions without optimization for debugger modules).
 
-m4_ifdef([project_orte], [ORTE_SETUP_DEBUGGER_FLAGS],
-         [m4_ifdef([project_ompi], [ORTE_SETUP_DEBUGGER_FLAGS])])
+ORTE_SETUP_DEBUGGER_FLAGS
 
 #
 # Delayed the substitution of CFLAGS and CXXFLAGS until now because
@@ -1233,13 +1018,31 @@ m4_ifdef([project_orte], [ORTE_SETUP_DEBUGGER_FLAGS],
 
 AC_SUBST(CFLAGS)
 AC_SUBST(CPPFLAGS)
-AC_SUBST(CXXFLAGS)
-AC_SUBST(CXXCPPFLAGS)
-m4_ifdef([project_ompi], [AC_SUBST(FFLAGS)
-                          AC_SUBST(FCFLAGS)
 
-                          AC_SUBST(OMPI_LIBMPI_EXTRA_LIBS)
-                          AC_SUBST(OMPI_LIBMPI_EXTRA_LDFLAGS)])
+# opaldatadir, opallibdir, and opalinclude are essentially the same as
+# pkg*dir, but will always be */openmpi.  This is to make it a bit
+# easier to deal with the problem of opal, orte, and ompi built from
+# their own tarballs, with their own PACKAGE variables.
+opaldatadir='${datadir}/openmpi'
+opallibdir='${libdir}/openmpi'
+opalincludedir='${includedir}/openmpi'
+AC_SUBST(opaldatadir)
+AC_SUBST(opallibdir)
+AC_SUBST(opalincludedir)
+
+ortedatadir="$opaldatadir"
+AC_SUBST(ortedatadir)
+ortelibdir="$opallibdir"
+AC_SUBST(ortelibdir)
+orteincludedir="$opalincludedir"
+AC_SUBST(orteincludedir)
+
+orcmdatadir="$opaldatadir"
+AC_SUBST(orcmdatadir)
+orcmlibdir="$opallibdir"
+AC_SUBST(orcmlibdir)
+orcmincludedir="$opalincludedir"
+AC_SUBST(orcmincludedir)
 
 #
 # Aggregate MCA parameters directory
@@ -1251,13 +1054,13 @@ AC_SUBST([AMCA_PARAM_SETS_DIR], ['$(opaldatadir)/amca-param-sets'])
 ############################################################################
 
 opal_show_subtitle "Wrapper compiler final setup"
-# The ORTE and OMPI wrapper scripts (i.e., not the C-compiled
+# The ORTE and OPAL wrapper scripts (i.e., not the C-compiled
 # executables) need perl.
 AC_PATH_PROG(PERL, perl, perl)
 
 OPAL_SETUP_WRAPPER_FINAL
 
-# Recreate some defines prefixed with OMPI_ so that there are no bare
+# Recreate some defines prefixed with OPAL_ so that there are no bare
 # autoconf macro defines in mpi.h.  Since AC sometimes changes whether
 # things are defined as null tokens or an integer result, two projects
 # with different versions of AC can cause problems.
@@ -1292,7 +1095,7 @@ fi
 #           [m4_ifdef(mca_project[_CONFIG_LOCAL], mca_project[_CONFIG_LOCAL])])
 #
 # Meaning that aclocal doesn't see that, for example,
-# "ompi_CONFIG_LOCAL" is actually invoked at the bottom and therefore
+# "opal_CONFIG_LOCAL" is actually invoked at the bottom and therefore
 # go look for an .m4 file that contains it.  Instead, we have to
 # manually list the macros here.  *Then* aclocal is smart enough to go
 # look for an .m4 file containing each macro, and if found,
@@ -1300,10 +1103,7 @@ fi
 # :-\
 
 m4_ifdef([opal_CONFIG_LOCAL], [opal_CONFIG_LOCAL])
-m4_ifdef([project_orte],
-         [m4_ifdef([orte_CONFIG_LOCAL], [orte_CONFIG_LOCAL])])
-m4_ifdef([project_ompi],
-         [m4_ifdef([ompi_CONFIG_LOCAL], [ompi_CONFIG_LOCAL])])
+m4_ifdef([orte_CONFIG_LOCAL], [orte_CONFIG_LOCAL])
 
 ############################################################################
 # Party on
@@ -1322,41 +1122,6 @@ case "`uname`" in
     ;;
 esac
 
-# opaldatadir, opallibdir, and opalinclude are essentially the same as
-# pkg*dir, but will always be */openmpi.  This is to make it a bit
-# easier to deal with the problem of opal, orte, and ompi built from
-# their own tarballs, with their own PACKAGE variables.
-opaldatadir='${datadir}/openmpi'
-opallibdir='${libdir}/openmpi'
-opalincludedir='${includedir}/openmpi'
-AC_SUBST(opaldatadir)
-AC_SUBST(opallibdir)
-AC_SUBST(opalincludedir)
-
-OPAL_SET_MCA_PREFIX([OMPI_MCA_])
-OPAL_SET_MCA_CMD_LINE_ID([mca])
-m4_ifdef([project_orte],
-         [ortedatadir="$opaldatadir"
-          AC_SUBST(ortedatadir)
-          ortelibdir="$opallibdir"
-          AC_SUBST(ortelibdir)
-          orteincludedir="$opalincludedir"
-          AC_SUBST(orteincludedir)])
-m4_ifdef([project_ompi],
-         [ompidatadir="$opaldatadir"
-          AC_SUBST(ompidatadir)
-          ompilibdir="$opallibdir"
-          AC_SUBST(ompilibdir)
-          ompiincludedir="$opalincludedir"
-          AC_SUBST(ompiincludedir)])
-m4_ifdef([project_oshmem],
-         [oshmemdatadir="$opaldatadir"
-          AC_SUBST(oshmemdatadir)
-          oshmemlibdir="$opallibdir"
-          AC_SUBST(oshmemlibdir)
-          oshmemincludedir="$opalincludedir"
-          AC_SUBST(oshmemincludedir)])
-
 opal_show_subtitle "Final output"
 
 AC_CONFIG_FILES([
@@ -1366,27 +1131,14 @@ AC_CONFIG_FILES([
 
     contrib/Makefile
 
-    contrib/dist/mofed/debian/changelog
-    contrib/dist/mofed/debian/control
-    contrib/dist/mofed/debian/copyright:LICENSE
-
-    test/Makefile
-    test/event/Makefile
-    test/asm/Makefile
-    test/datatype/Makefile
-    test/class/Makefile
-    test/support/Makefile
-    test/threads/Makefile
-    test/util/Makefile
 ])
-AC_CONFIG_FILES([contrib/dist/mofed/debian/rules],
-                [chmod +x contrib/dist/mofed/debian/rules])
-AC_CONFIG_FILES([contrib/dist/mofed/compile_debian_mlnx_example],
-                [chmod +x contrib/dist/mofed/compile_debian_mlnx_example])
+
+AC_CONFIG_FILES([contrib/dist/linux/openrcm.spec])
 
 OPAL_CONFIG_FILES
-m4_ifdef([project_orte], [ORTE_CONFIG_FILES])
-m4_ifdef([project_ompi], [OMPI_CONFIG_FILES])
-m4_ifdef([project_oshmem], [OSHMEM_CONFIG_FILES])
+ORTE_CONFIG_FILES
+ORCM_CONFIG_FILES
+#ORCMAPI_CONFIG_FILES
+SCON_CONFIG_FILES
 
 AC_OUTPUT

@@ -4,13 +4,11 @@
 # Copyright (c) 2010      Oracle and/or its affiliates.  All rights reserved.
 # Copyright (c) 2013      Mellanox Technologies, Inc.
 #                         All rights reserved.
-# Copyright (c) 2013-2014 Intel, Inc.  All rights reserved.
-# Copyright (c) 2015      Research Organization for Information Science
-#                         and Technology (RIST). All rights reserved.
+# Copyright (c) 2013-2015 Intel, Inc.  All rights reserved.
 # $COPYRIGHT$
-#
+# 
 # Additional copyrights may follow
-#
+# 
 # $HEADER$
 #
 
@@ -43,9 +41,6 @@ my $mpicontrib_found;
 my @subdirs;
 
 # Command line parameters
-my $no_ompi_arg = 0;
-my $no_orte_arg = 0;
-my $no_oshmem_arg = 0;
 my $quiet_arg = 0;
 my $debug_arg = 0;
 my $help_arg = 0;
@@ -58,14 +53,14 @@ my $include_list;
 my $exclude_list;
 
 # Minimum versions
-my $ompi_automake_version = "1.12.2";
-my $ompi_autoconf_version = "2.69";
-my $ompi_libtool_version = "2.4.2";
+my $orcm_automake_version = "1.12.2";
+my $orcm_autoconf_version = "2.69";
+my $orcm_libtool_version = "2.4.2";
 
 # Search paths
-my $ompi_autoconf_search = "autoconf";
-my $ompi_automake_search = "automake";
-my $ompi_libtoolize_search = "libtoolize;glibtoolize";
+my $orcm_autoconf_search = "autoconf";
+my $orcm_automake_search = "automake";
+my $orcm_libtoolize_search = "libtoolize;glibtoolize";
 
 # One-time setup
 my $username;
@@ -74,12 +69,6 @@ my $full_hostname;
 
 # Patch program
 my $patch_prog = "patch";
-# Solaris "patch" doesn't understand unified diffs, and will cause
-# autogen.pl to hang with a "File to patch:" prompt. Default to Linux
-# "patch", but use "gpatch" on Solaris.
-if ($^O eq "solaris") {
-    $patch_prog = "gpatch";
-}
 
 $username = getpwuid($>);
 $full_hostname = `hostname`;
@@ -182,6 +171,7 @@ sub process_subdir {
         print "--- Found configure.in|ac; running autoreconf...\n";
         safe_system("autoreconf -ivf");
         print "--- Patching autotools output... :-(\n";
+        patch_autotools_output($start);
     } else {
         my_die "Found subdir, but no autogen.sh or configure.in|ac to do anything";
     }
@@ -189,9 +179,6 @@ sub process_subdir {
     # Ensure that we got a good configure executable.
     my_die "Did not generate a \"configure\" executable in $dir.\n"
         if (! -x "configure");
-
-    # Fix known issues in Autotools output
-    patch_autotools_output($start);
 
     # Chdir back to where we came from
     chdir($start);
@@ -251,7 +238,7 @@ sub mca_process_component {
     $found_component->{"name"} = $component;
 
     # Push the results onto the $mca_found hash array
-    push(@{$mca_found->{$pname}->{$framework}->{"components"}},
+    push(@{$mca_found->{$pname}->{$framework}->{"components"}}, 
          $found_component);
 
     # Is there an autogen.subdirs in here?
@@ -278,7 +265,7 @@ sub ignored {
         $unignore .= $_
             while (<UNIGNORE>);
         close(UNIGNORE);
-
+        
         $ignored = 0
             if ($unignore =~ /^$username$/m ||
                 $unignore =~ /^$username\@$hostname$/m ||
@@ -311,13 +298,13 @@ sub mca_process_framework {
         # Look for component directories in this framework
         if (-d $dir) {
             $mca_found->{$pname}->{$framework}->{found} = 1;
-            opendir(DIR, $dir) ||
+            opendir(DIR, $dir) || 
                 my_die "Can't open $dir directory";
             foreach my $d (readdir(DIR)) {
                 # Skip any non-directory, "base", or any dir that
                 # begins with "."
                 next
-                    if (! -d "$dir/$d" || $d eq "base" ||
+                    if (! -d "$dir/$d" || $d eq "base" || 
                         substr($d, 0, 1) eq ".");
 
                 # Skip any component that doesn't have a configure.m4
@@ -332,7 +319,7 @@ sub mca_process_framework {
 
                 verbose "--- Found $pname / $framework / $d component\n";
 
-                # Skip if specifically excluded
+                # Skip if specifically excluded 
                 if (exists($exclude_list->{$framework}) &&
                     $exclude_list->{$framework}[0] eq $d) {
                     verbose "    => Excluded\n";
@@ -419,7 +406,7 @@ sub mca_process_project {
     # Look for framework directories in this project
     my $dir = "$topdir/$pdir/mca";
     if (-d $dir) {
-        opendir(DIR, $dir) ||
+        opendir(DIR, $dir) || 
             my_die "Can't open $dir directory";
         my @my_dirs = readdir(DIR);
         @my_dirs = sort(@my_dirs);
@@ -497,7 +484,7 @@ dnl MCA information\n";
             # Does this project have a configure.m4 file?
             push(@includes, "$pdir/configure.m4")
                 if (exists($mca_found->{$p}->{"configure.m4"}));
-
+                           
             # Print out project-level info
             my @mykeys = keys(%{$mca_found->{$pname}});
             @mykeys = sort(@mykeys);
@@ -557,7 +544,7 @@ m4_define([mca_${pname}_framework_list], [$frameworks_comma])
                 }
                 $m4_config_component_list =~ s/^, //;
                 $no_config_component_list =~ s/^, //;
-
+                
                 $m4 .= "dnl Components in the $pname / $f framework
 m4_define([mca_${pname}_${f}_m4_config_component_list], [$m4_config_component_list])
 m4_define([mca_${pname}_${f}_no_config_component_list], [$no_config_component_list])
@@ -571,180 +558,6 @@ m4_define([mca_${pname}_${f}_no_config_component_list], [$no_config_component_li
     $m4 .= "$dnl_line
 
 dnl List of configure.m4 files to include\n";
-    foreach my $i (@includes) {
-        $m4 .= "m4_include([$i])\n";
-    }
-}
-
-##############################################################################
-
-sub mpiext_process_extension {
-    my ($topdir, $ext_prefix, $extdir) = @_;
-
-    my $edir = "$topdir/$ext_prefix/$extdir";
-    return
-        if (! -d $edir);
-
-    # Process this directory (pretty much the same treatment as for
-    # MCA components, so it's in a sub).
-    my $found_ext;
-
-    $found_ext->{"name"} = $extdir;
-
-    # Push the results onto the hash array
-    push(@{$mpiext_found}, $found_ext);
-
-    # Is there an autogen.subdirs in here?
-    process_autogen_subdirs($edir);
-}
-
-##############################################################################
-
-sub mpiext_run_global {
-    my ($ext_prefix) = @_;
-
-    my $topdir = Cwd::cwd();
-
-    my $dir = "$topdir/$ext_prefix";
-    opendir(DIR, $dir) ||
-        my_die "Can't open $dir directory";
-    foreach my $d (readdir(DIR)) {
-        # Skip any non-directory, "base", or any dir that begins with "."
-        next
-            if (! -d "$dir/$d" || $d eq "base" || substr($d, 0, 1) eq ".");
-
-        # If this directory has a configure.m4, then it's an
-        # extension.
-        if (-f "$dir/$d/configure.m4") {
-            verbose "=== Found $d MPI extension";
-
-            # Check ignore status
-            if (ignored("$dir/$d")) {
-                verbose " (ignored)\n";
-            } else {
-                verbose "\n";
-                mpiext_process_extension($topdir, $ext_prefix, $d);
-            }
-        }
-    }
-    closedir(DIR);
-    debug_dump($mpiext_found);
-
-    #-----------------------------------------------------------------------
-
-    $m4 .= "\n$dnl_line
-$dnl_line
-$dnl_line
-
-dnl Open MPI extensions information
-$dnl_line\n\n";
-
-    # Array for all the m4_includes that we'll need to pick up the
-    # configure.m4's.
-    my @includes;
-    my $m4_config_ext_list;
-
-    # Troll through each of the found exts
-    foreach my $ext (@{$mpiext_found}) {
-        my $e = $ext->{name};
-        push(@includes, "$ext_prefix/$e/configure.m4");
-        $m4_config_ext_list .= ", $e";
-    }
-
-    $m4_config_ext_list =~ s/^, //;
-
-    # List the M4 and no configure exts
-    $m4 .= "dnl List of all MPI extensions
-m4_define([ompi_mpiext_list], [$m4_config_ext_list])\n";
-    # List out all the m4_include
-    $m4 .= "\ndnl List of configure.m4 files to include\n";
-    foreach my $i (@includes) {
-        $m4 .= "m4_include([$i])\n";
-    }
-}
-
-##############################################################################
-
-sub mpicontrib_process {
-    my ($topdir, $contrib_prefix, $contribdir) = @_;
-
-    my $cdir = "$topdir/$contrib_prefix/$contribdir";
-    return
-        if (! -d $cdir);
-
-    # Process this directory (pretty much the same treatment as for
-    # MCA components, so it's in a sub).
-    my $found_contrib;
-
-    $found_contrib->{"name"} = $contribdir;
-
-    # Push the results onto the hash array
-    push(@{$mpicontrib_found}, $found_contrib);
-
-    # Is there an autogen.subdirs in here?
-    process_autogen_subdirs($cdir);
-}
-
-##############################################################################
-
-sub mpicontrib_run_global {
-    my ($contrib_prefix) = @_;
-
-    my $topdir = Cwd::cwd();
-
-    my $dir = "$topdir/$contrib_prefix";
-    opendir(DIR, $dir) ||
-        my_die "Can't open $dir directory";
-    foreach my $d (readdir(DIR)) {
-        # Skip any non-directory, "base", or any dir that begins with "."
-        next
-            if (! -d "$dir/$d" || $d eq "base" || substr($d, 0, 1) eq ".");
-
-        # If this directory has a configure.m4, then it's an
-        # extension.
-        if (-f "$dir/$d/configure.m4") {
-            verbose "=== Found $d MPI contrib";
-
-            # Check ignore status
-            if (ignored("$dir/$d")) {
-                verbose " (ignored)\n";
-            } else {
-                verbose "\n";
-                mpicontrib_process($topdir, $contrib_prefix, $d);
-            }
-        }
-    }
-    closedir(DIR);
-    debug_dump($mpiext_found);
-
-    #-----------------------------------------------------------------------
-
-    $m4 .= "\n$dnl_line
-$dnl_line
-$dnl_line
-
-dnl Open MPI contrib information
-$dnl_line\n\n";
-
-    # Array for all the m4_includes that we'll need to pick up the
-    # configure.m4's.
-    my @includes;
-    my $m4_config_contrib_list;
-
-    # Troll through each of the found contribs
-    foreach my $contrib (@{$mpicontrib_found}) {
-        my $c = $contrib->{name};
-        push(@includes, "$contrib_prefix/$c/configure.m4");
-        $m4_config_contrib_list .= ", $c";
-    }
-
-    $m4_config_contrib_list =~ s/^, //;
-
-    # List the M4 and no configure exts
-    $m4 .= "dnl List of all MPI contribs
-m4_define([ompi_mpicontrib_list], [$m4_config_contrib_list])\n";
-    # List out all the m4_include
-    $m4 .= "\ndnl List of configure.m4 files to include\n";
     foreach my $i (@includes) {
         $m4 .= "m4_include([$i])\n";
     }
@@ -825,7 +638,7 @@ sub find_and_check {
             if ($pn > $mn) {
                 verbose "     ==> ACCEPTED\n";
                 return;
-            }
+            } 
             # If the version is lower, we're done.
             elsif ($pn < $mn ||
                 ($pn == $mn && $pa lt $ma)) {
@@ -861,9 +674,9 @@ I need at least $req_version, but only found the following versions:\n\n";
 Please make sure you are using at least the following versions of the
 tools:
 
-    GNU Autoconf: $ompi_autoconf_version
-    GNU Automake: $ompi_automake_version
-    GNU Libtool: $ompi_libtool_version
+    GNU Autoconf: $orcm_autoconf_version
+    GNU Automake: $orcm_automake_version
+    GNU Libtool: $orcm_libtool_version
 =================================================================\n";
     my_exit(1);
 }
@@ -904,11 +717,6 @@ sub patch_autotools_output {
         unlink("config/ltmain.sh.rej");
     }
 
-    # If there's no configure script, there's nothing else to do.
-    return
-        if (! -f "configure");
-    my @verbose_out;
-
     # Total ugh.  We have to patch the configure script itself.  See below
     # for explainations why.
     open(IN, "configure") || my_die "Can't open configure";
@@ -916,16 +724,15 @@ sub patch_autotools_output {
     $c .= $_
         while(<IN>);
     close(IN);
-    my $c_orig = $c;
 
     # LT <=2.2.6b need to be patched for the PGI 10.0 fortran compiler
     # name (pgfortran).  The following comes from the upstream LT patches:
     # http://lists.gnu.org/archive/html/libtool-patches/2009-11/msg00012.html
     # http://lists.gnu.org/archive/html/bug-libtool/2009-11/msg00045.html
-    # Note that that patch is part of Libtool (which is not in this OMPI
+    # Note that that patch is part of Libtool (which is not in this ORCM
     # source tree); we can't fix it.  So all we can do is patch the
     # resulting configure script.  :-(
-    push(@verbose_out, $indent_str . "Patching configure for Libtool PGI 10 fortran compiler name\n");
+    verbose "$indent_str"."Patching configure for Libtool PGI 10 fortran compiler name\n";
     $c =~ s/gfortran g95 xlf95 f95 fort ifort ifc efc pgf95 lf95 ftn/gfortran g95 xlf95 f95 fort ifort ifc efc pgfortran pgf95 lf95 ftn/g;
     $c =~ s/pgcc\* \| pgf77\* \| pgf90\* \| pgf95\*\)/pgcc* | pgf77* | pgf90* | pgf95* | pgfortran*)/g;
     $c =~ s/pgf77\* \| pgf90\* \| pgf95\*\)/pgf77* | pgf90* | pgf95* | pgfortran*)/g;
@@ -935,19 +742,19 @@ sub patch_autotools_output {
     # Libtool install; all we can do is patch the resulting configure
     # script.  :-( The following comes from the upstream patch:
     # http://lists.gnu.org/archive/html/libtool-patches/2009-11/msg00016.html
-    push(@verbose_out, $indent_str . "Patching configure for Libtool PGI version number regexps\n");
+    verbose "$indent_str"."Patching configure for Libtool PGI version number regexps\n";
     $c =~ s/\*pgCC\\ \[1-5\]\* \| \*pgcpp\\ \[1-5\]\*/*pgCC\\ [1-5]\.* | *pgcpp\\ [1-5]\.*/g;
 
     # Similar issue as above -- fix the case statements that handle the Sun
     # Fortran version strings.
     #
-    # Note: we have to use octal escapes to match '*Sun\ F*) and the
+    # Note: we have to use octal escapes to match '*Sun\ F*) and the 
     # four succeeding lines in the bourne shell switch statement.
     #   \ = 134
     #   ) = 051
     #   * = 052
     #
-    # Below is essentially an upstream patch for Libtool which we want
+    # Below is essentially an upstream patch for Libtool which we want 
     # made available to Open MPI users running older versions of Libtool
 
     foreach my $tag (("", "_FC")) {
@@ -970,32 +777,15 @@ sub patch_autotools_output {
           ;;
 ";
 
-        push(@verbose_out, $indent_str . "Patching configure for Sun Studio Fortran version strings ($tag)\n");
+        verbose "$indent_str"."Patching configure for Sun Studio Fortran version strings ($tag)\n";
         $c =~ s/$search_string/$replace_string/;
     }
 
     # See http://git.savannah.gnu.org/cgit/libtool.git/commit/?id=v2.2.6-201-g519bf91 for details
     # Note that this issue was fixed in LT 2.2.8, however most distros are still using 2.2.6b
 
-    push(@verbose_out, $indent_str . "Patching configure for IBM xlf libtool bug\n");
+    verbose "$indent_str"."Patching configure for IBM xlf libtool bug\n";
     $c =~ s/(\$LD -shared \$libobjs \$deplibs \$)compiler_flags( -soname \$soname)/$1linker_flags$2/g;
-
-    # Fix consequence of broken libtool.m4
-    # see http://lists.gnu.org/archive/html/bug-libtool/2015-07/msg00002.html and
-    # https://github.com/open-mpi/ompi/issues/751
-    push(@verbose_out, $indent_str . "Patching configure for libtool.m4 bug\n");
-    # patch for libtool < 2.4.3
-    $c =~ s/# Some compilers place space between "-{L,R}" and the path.\n       # Remove the space.\n       if test \$p = \"-L\" \|\|/# Some compilers place space between "-{L,-l,R}" and the path.\n       # Remove the spaces.\n       if test \$p = \"-L\" \|\|\n          test \$p = \"-l\" \|\|/g;
-    # patch for libtool >= 2.4.3
-    $c =~ s/# Some compilers place space between "-{L,R}" and the path.\n       # Remove the space.\n       if test x-L = \"\$p\" \|\|\n          test x-R = \"\$p\"\; then/# Some compilers place space between "-{L,-l,R}" and the path.\n       # Remove the spaces.\n       if test x-L = \"x\$p\" \|\|\n          test x-l = \"x\$p\" \|\|\n          test x-R = \"x\$p\"\; then/g;
-
-    # Only write out verbose statements and a new configure if the
-    # configure content actually changed
-    return
-        if ($c eq $c_orig);
-    foreach my $str (@verbose_out) {
-        verbose($str);
-    }
 
     open(OUT, ">configure.patched") || my_die "Can't open configure.patched";
     print OUT $c;
@@ -1013,10 +803,7 @@ sub patch_autotools_output {
 
 # Command line parameters
 
-my $ok = Getopt::Long::GetOptions("no-ompi" => \$no_ompi_arg,
-                                  "no-orte" => \$no_orte_arg,
-                                  "no-oshmem" => \$no_oshmem_arg,
-                                  "quiet|q" => \$quiet_arg,
+my $ok = Getopt::Long::GetOptions("quiet|q" => \$quiet_arg,
                                   "debug|d" => \$debug_arg,
                                   "help|h" => \$help_arg,
                                   "platform=s" => \$platform_arg,
@@ -1028,9 +815,6 @@ if (!$ok || $help_arg) {
     print "Invalid command line argument.\n\n"
         if (!$ok);
     print "Options:
-  --no-ompi | -no-ompi          Do not build the Open MPI layer
-  --no-orte | -no-orte          Do not build the ORTE layer
-  --no-oshmem | -no-oshmem      Do not build the OSHMEM layer
   --quiet | -q                  Do not display normal verbose output
   --debug | -d                  Output lots of debug information
   --help | -h                   This help list
@@ -1048,39 +832,8 @@ if (!$ok || $help_arg) {
 #---------------------------------------------------------------------------
 
 # Check for project existence
-my $project_name_long = "Open MPI";
-my $project_name_short = "openmpi";
-
-if (! -e "ompi") {
-    $no_ompi_arg = 1;
-    debug "No ompi subdirectory found - will not build MPI layer\n";
-}
-if (! -e "orte") {
-    $no_orte_arg = 1;
-    debug "No orte subdirectory found - will not build ORTE\n";
-}
-if (! -e "oshmem") {
-    $no_oshmem_arg = 1;
-    debug "No oshmem subdirectory found - will not build OSHMEM\n";
-}
-
-if (-e "orcm") {
-    # bozo check - ORCM requires ORTE
-    if ($no_orte_arg == 1) {
-        print "Cannot build ORCM without ORTE\n";
-        my_exit(1);
-    }
-    $project_name_long = "Open Resilient Cluster Manager";
-    $project_name_short = "open-rcm";
-} elsif ($no_ompi_arg == 1) {
-    if ($no_orte_arg == 0) {
-        $project_name_long = "Open MPI Run Time Environment";
-        $project_name_short = "open-rte";
-    } else {
-        $project_name_long = "Open Portability Access Layer";
-        $project_name_short = "open-pal";
-    }
-}
+my $project_name_long = "Open Resilient Cluster Manager";
+my $project_name_short = "openrcm";
 
 #---------------------------------------------------------------------------
 
@@ -1093,33 +846,33 @@ dnl
 $dnl_line
 dnl This file is automatically created by autogen.pl; it should not
 dnl be edited by hand!!
-dnl
+dnl 
 dnl Generated by $username at " . localtime(time) . "
 dnl on $full_hostname.
 $dnl_line\n\n";
 
 #---------------------------------------------------------------------------
 
-# Verify that we're in the OMPI root directorty by checking for a token file.
+# Verify that we're in the ORCM root directory by checking for a token file.
 
-my_die "Not at the root directory of an OMPI source tree"
-    if (! -f "config/opal_try_assemble.m4");
+my_die "Not at the root directory of an ORCM source tree"
+    if (! -f "config/opal_mca.m4");
 
-# Now that we've verified that we're in the top-level OMPI directory,
+# Now that we've verified that we're in the top-level ORCM directory,
 # set the sentinel file to remove if we abort.
 $sentinel = Cwd::cwd() . "/configure";
 
 #---------------------------------------------------------------------------
 
 my $step = 1;
-verbose "Open MPI autogen (buckle up!)
+verbose "Open RCM autogen (buckle up!)
 
 $step. Checking tool versions\n\n";
 
 # Check the autotools revision levels
-&find_and_check("autoconf", $ompi_autoconf_search, $ompi_autoconf_version);
-&find_and_check("libtool", $ompi_libtoolize_search, $ompi_libtool_version);
-&find_and_check("automake", $ompi_automake_search, $ompi_automake_version);
+&find_and_check("autoconf", $orcm_autoconf_search, $orcm_autoconf_version);
+&find_and_check("libtool", $orcm_libtoolize_search, $orcm_libtool_version);
+&find_and_check("automake", $orcm_automake_search, $orcm_automake_version);
 
 #---------------------------------------------------------------------------
 
@@ -1194,54 +947,18 @@ if ($include_arg) {
 
 #---------------------------------------------------------------------------
 
-++$step;
-verbose "\n$step. Running template-generating scripts\n\n";
-
-# These scripts generate fortran header files of different types, but
-# guaranteed to have the same value (i.e., so humans don't have to
-# maintain two sets of files, and potentially have values get out of
-# sync).
-
-my @scripts;
-push(@scripts, "ompi/include/mpif-values.pl");
-
-foreach my $s (@scripts) {
-    verbose "=== $s\n";
-    if (! -x $s) {
-        print "Cannot find executable $s!\nAborting.\n";
-        my_exit(1);
-    }
-    if (system($s) != 0) {
-        print "Script failed: $s\n";
-        my_exit(1);
-    }
-}
-
-#---------------------------------------------------------------------------
-
 # Find projects, frameworks, components
 ++$step;
 verbose "\n$step. Searching for projects, MCA frameworks, and MCA components\n";
 
 my $ret;
 
-# Figure out if we're at the top level of the OMPI tree or not.
-if (! (-f "VERSION" && -f "configure.ac" && -f $topdir_file)) {
-    print("\n\nYou must run this script from the top-level directory of the Open MPI tree.\n\n");
-    my_exit(1);
-}
-
 # Top-level projects to examine
 my $projects;
 push(@{$projects}, { name => "opal", dir => "opal", need_base => 1 });
-push(@{$projects}, { name => "orte", dir => "orte", need_base => 1 })
-    if (!$no_orte_arg);
-push(@{$projects}, { name => "ompi", dir => "ompi", need_base => 1 })
-    if (!$no_ompi_arg);
-push(@{$projects}, { name => "oshmem", dir => "oshmem", need_base => 1 })
-    if (!$no_ompi_arg && !$no_orte_arg && !$no_oshmem_arg);
-push(@{$projects}, { name => "orcm", dir => "orcm", need_base => 1 })
-    if (-e "orcm");
+push(@{$projects}, { name => "orte", dir => "orte", need_base => 1 });
+push(@{$projects}, { name => "orcm", dir => "orcm", need_base => 1 });
+push(@{$projects}, { name => "scon", dir => "scon", need_base => 1 });
 
 $m4 .= "dnl Separate m4 define for each project\n";
 foreach my $p (@$projects) {
@@ -1254,19 +971,6 @@ m4_define([project_name_short], [$project_name_short])\n";
 
 # Setup MCA
 mca_run_global($projects);
-
-#---------------------------------------------------------------------------
-
-# Find MPI extensions and contribs
-if (!$no_ompi_arg) {
-    ++$step;
-    verbose "\n$step. Searching for Open MPI extensions\n\n";
-    mpiext_run_global("ompi/mpiext");
-
-    ++$step;
-    verbose "\n$step. Searching for Open MPI contribs\n\n";
-    mpicontrib_run_global("ompi/contrib");
-}
 
 #---------------------------------------------------------------------------
 
@@ -1296,7 +1000,7 @@ find_and_delete(qw/config.guess config.sub depcomp compile install-sh ltconfig
 # Remove the old m4 file and write the new one
 verbose "==> Writing m4 file with autogen.pl results\n";
 unlink($m4_output_file);
-open(M4, ">$m4_output_file") ||
+open(M4, ">$m4_output_file") || 
     my_die "Can't open $m4_output_file";
 print M4 $m4;
 close(M4);
@@ -1316,13 +1020,9 @@ foreach my $project (@{$projects}) {
 }
 safe_system($cmd);
 
-patch_autotools_output(".");
-
-#---------------------------------------------------------------------------
-
 verbose "
 ================================================
-Open MPI autogen: completed successfully.  w00t!
+Open RCM autogen: completed successfully.  w00t!
 ================================================\n\n";
 
 # Done!

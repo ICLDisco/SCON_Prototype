@@ -1,7 +1,7 @@
 #
-# Copyright (c) 2007      Los Alamos National Security, LLC.
-#                         All rights reserved.
-# Copyright (c) 2010 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2009-2010 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2015      Intel, Inc. All rights reserved
+#
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -9,23 +9,7 @@
 # $HEADER$
 #
 
-AM_CPPFLAGS = $(LTDLINCL)
+# ORTE components are always installed as DSOs, so there's no logic
+# necessary here to build them statically.
 
-# main library setup
-noinst_LTLIBRARIES = libmca_routed.la
-libmca_routed_la_SOURCES =
-
-# local files
-headers = routed.h routed_types.h
-libmca_routed_la_SOURCES += $(headers)
-
-# Conditionally install the header files
-if WANT_INSTALL_HEADERS
-ortedir = $(orteincludedir)/$(subdir)
-nobase_orte_HEADERS = $(headers)
-endif
-
-include base/Makefile.am
-
-distclean-local:
-	rm -f base/static-components.h
+SUBDIRS = $(MCA_orte_routed_DSO_COMPONENTS)

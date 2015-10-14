@@ -1,5 +1,7 @@
 #
-#  Copyright (c) 2014      Intel, Inc. All rights reserved.
+# Copyright (c) 2009-2010 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2015      Intel, Inc. All rights reserved
+#
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -7,25 +9,7 @@
 # $HEADER$
 #
 
-# main library setup
-noinst_LTLIBRARIES = libmca_qos.la
-libmca_qos_la_SOURCES =
+# ORTE components are always installed as DSOs, so there's no logic
+# necessary here to build them statically.
 
-# pkgdata setup
-dist_ortedata_DATA =
-
-# local files
-headers = qos.h
-libmca_qos_la_SOURCES += $(headers)
-
-# Conditionally install the header files
-if WANT_INSTALL_HEADERS
-ortedir = $(orteincludedir)/$(subdir)
-nobase_orte_HEADERS = $(headers)
-endif
-
-include base/Makefile.am
-
-
-distclean-local:
-	rm -f base/static-components.h
+SUBDIRS = $(MCA_orte_qos_DSO_COMPONENTS)

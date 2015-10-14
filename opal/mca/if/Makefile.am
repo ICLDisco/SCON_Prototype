@@ -1,5 +1,7 @@
 #
-# Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2009-2010 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2015      Intel, Inc. All rights reserved.
+#
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -7,21 +9,7 @@
 # $HEADER$
 #
 
-# main library setup
-noinst_LTLIBRARIES = libmca_if.la
-libmca_if_la_SOURCES =
+# OPAL components are always installed as DSOs, so there's no logic
+# necessary here to build them statically.
 
-# local files
-headers = if.h
-libmca_if_la_SOURCES += $(headers)
-
-# Conditionally install the header files
-if WANT_INSTALL_HEADERS
-opaldir = $(opalincludedir)/opal/mca/if
-nobase_opal_HEADERS = $(headers)
-endif
-
-include base/Makefile.am
-
-distclean-local:
-	rm -f base/static-components.h
+SUBDIRS = $(MCA_opal_if_DSO_COMPONENTS)
